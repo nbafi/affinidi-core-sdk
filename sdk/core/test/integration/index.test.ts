@@ -1,5 +1,5 @@
 import 'mocha'
-import './env'
+import '../env'
 
 require('./services')
 require('./NetworkMember.test')

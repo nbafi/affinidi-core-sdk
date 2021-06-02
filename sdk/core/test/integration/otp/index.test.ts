@@ -1,6 +1,3 @@
-import 'mocha'
-import '../env'
-
 import { expect } from 'chai'
 import { CommonNetworkMember } from '../../../src/CommonNetworkMember'
 import { SdkOptions } from '../../../src/dto/shared.dto'

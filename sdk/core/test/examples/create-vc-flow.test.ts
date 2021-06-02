@@ -3,6 +3,7 @@ import { CredentialRequirement, OfferedCredential, SignedCredential } from '../.
 import { CommonNetworkMember } from '../../src/CommonNetworkMember'
 import { getVCEducationPersonV1Context, VCSEducationPersonV1 } from '@affinidi/vc-data'
 import { getOptionsForEnvironment } from '../helpers'
+import cryptoRandomString from 'crypto-random-string'
 
 // 0 [Issuer] Create DID
 // 0 [Holder] Create DID
@@ -14,23 +15,22 @@ import { getOptionsForEnvironment } from '../helpers'
 describe('[Offer VC flow]', () => {
   it('should implement offer VC flow', async () => {
     const options = getOptionsForEnvironment()
-    const universityPassword = 'university-password-123'
-    const studentPassword = 'student-password-123'
-    const theaterPassword = 'theater-password-123'
+    const universityPassword = '!University-p4ssw0rd'
+    const studentPassword = '!Student-p4ssw0rd'
+    const theaterUsername = `fake.example.theater.${cryptoRandomString({ length: 10 })}`
+    const theaterPassword = `!Theater-p4ssw0rd-${cryptoRandomString({ length: 10 })}`
 
     // ---
 
-    // 0 [Issuer] Create DID
-    console.log('0 issuer')
+    // [Issuer] Create DID
     const { encryptedSeed: universityEncryptedSeed } = await CommonNetworkMember.register(universityPassword, options)
     const university = new CommonNetworkMember(universityPassword, universityEncryptedSeed, options)
 
-    // 0 [Holder] Create DID
-    console.log('0 holder')
+    // [Holder] Create DID
     const { encryptedSeed: studentEncryptedSeed } = await CommonNetworkMember.register(studentPassword, options)
     const student = new CommonNetworkMember(studentPassword, studentEncryptedSeed, options)
 
-    // 1 [Issuer] Issue credential for Holder
+    // [Issuer] Offer credential for Holder
     const credentialSubject: VCSEducationPersonV1 = {
       data: {
         '@type': ['Person', 'PersonE', 'EducationPerson'],
@@ -57,34 +57,30 @@ describe('[Offer VC flow]', () => {
 
     const offeredCredentials: OfferedCredential[] = [{ type: 'EducationPersonV1' }]
 
-    console.log('1 create offer request')
     const credentialOfferRequestToken = await university.generateCredentialOfferRequestToken(offeredCredentials)
 
-    console.log('1 create offer response')
+    // [Holder] Accept credential from Issuer
     const credentialOfferResponseToken = await student.createCredentialOfferResponseToken(credentialOfferRequestToken)
 
-    console.log('1 verify offer response')
+    // [Issuer] Validate Holder's response
     const offerVerification = await university.verifyCredentialOfferResponseToken(
       credentialOfferResponseToken,
       credentialOfferRequestToken,
     )
-    console.log(offerVerification)
 
-    console.log('1 sign credential')
+    expect(offerVerification.isValid).to.be.true
+
+    // [Issuer] Sign credential
     const signedCredential = await university.signCredential(credentialSubject, credentialMetadata, {
       credentialOfferResponseToken,
       requesterDid: student.did,
     })
 
-    // 2 [Verifier] Request VC from Holder
+    // [Verifier] Request VC from Holder
 
-    console.log('2 verifier')
-    const { encryptedSeed: theaterEncryptedSeed } = await CommonNetworkMember.register(theaterPassword, options)
-    const theater = new CommonNetworkMember(theaterPassword, theaterEncryptedSeed, options)
+    const theater: CommonNetworkMember = await CommonNetworkMember.signUp(theaterUsername, theaterPassword, options)
 
     const credentialRequirements: CredentialRequirement[] = [{ type: ['EducationPersonV1'] }]
-
-    console.log('2 create share request')
     const credentialShareRequestToken = await theater.generateCredentialShareRequestToken(
       credentialRequirements,
       undefined,
@@ -92,21 +88,21 @@ describe('[Offer VC flow]', () => {
     )
 
     // 3 [Holder] Give VP to Verifier
-    // TODO: why need type casting?
-    const suppliedCredentials: SignedCredential[] = [signedCredential as SignedCredential]
+    const suppliedCredentials: SignedCredential[] = student.getShareCredential(credentialShareRequestToken, {
+      credentials: [signedCredential],
+    })
 
-    console.log('3 create share response')
     const credentialShareResponseToken = await student.createCredentialShareResponseToken(
       credentialShareRequestToken,
       suppliedCredentials,
     )
 
     // 4 [Verifier] Verify the VP (request to Issuer?)
-    console.log('3 verify share response')
-    const result2 = await theater.verifyCredentialShareResponseToken(
+    const shareVerification = await theater.verifyCredentialShareResponseToken(
       credentialShareResponseToken,
       credentialShareRequestToken,
     )
-    console.log(result2)
+
+    expect(shareVerification.isValid).to.be.true
   })
 })
