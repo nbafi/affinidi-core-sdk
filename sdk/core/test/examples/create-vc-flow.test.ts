@@ -5,13 +5,6 @@ import { getVCEducationPersonV1Context, VCSEducationPersonV1 } from '@affinidi/v
 import { getOptionsForEnvironment } from '../helpers'
 import cryptoRandomString from 'crypto-random-string'
 
-// 0 [Issuer] Create DID
-// 0 [Holder] Create DID
-// 1 [Issuer] Issue credential for Holder
-// 2 [Verifier] Request VC from Holder
-// 3 [Holder] Give VP to Verifier
-// 4 [Verifier] Verify the VP (request to Issuer?)
-
 describe('[Offer VC flow]', () => {
   it('should implement offer VC flow', async () => {
     const options = getOptionsForEnvironment()
@@ -77,7 +70,6 @@ describe('[Offer VC flow]', () => {
     })
 
     // [Verifier] Request VC from Holder
-
     const theater: CommonNetworkMember = await CommonNetworkMember.signUp(theaterUsername, theaterPassword, options)
 
     const credentialRequirements: CredentialRequirement[] = [{ type: ['EducationPersonV1'] }]
@@ -88,6 +80,7 @@ describe('[Offer VC flow]', () => {
     )
 
     // 3 [Holder] Give VP to Verifier
+    // TODO: generate a VP
     const suppliedCredentials: SignedCredential[] = student.getShareCredential(credentialShareRequestToken, {
       credentials: [signedCredential],
     })
@@ -97,7 +90,8 @@ describe('[Offer VC flow]', () => {
       suppliedCredentials,
     )
 
-    // 4 [Verifier] Verify the VP (request to Issuer?)
+    // 4 [Verifier] Verify the VP
+    // TODO: generate a VP
     const shareVerification = await theater.verifyCredentialShareResponseToken(
       credentialShareResponseToken,
       credentialShareRequestToken,
