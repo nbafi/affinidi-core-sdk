@@ -1,7 +1,7 @@
 import { expect } from 'chai'
 import { CredentialRequirement, OfferedCredential, SignedCredential } from '../../src/dto/shared.dto'
 import { CommonNetworkMember } from '../../src/CommonNetworkMember'
-import { getVCEducationPersonV1Context, VCSEducationPersonV1, CredentialV1 } from '@affinidi/vc-data'
+import { getVCEducationPersonV1Context, VCSEducationPersonV1 } from '@affinidi/vc-data'
 import { getOptionsForEnvironment } from '../helpers'
 import cryptoRandomString from 'crypto-random-string'
 
@@ -73,6 +73,7 @@ describe('[Offer VC flow]', () => {
 
     // [Verifier] Request VC from Holder
     const theater: CommonNetworkMember = await CommonNetworkMember.signUp(theaterUsername, theaterPassword, options)
+    console.log(theater.password)
 
     const credentialRequirements: CredentialRequirement[] = [{ type: ['VerifiableCredential', 'EducationPersonV1'] }]
     const credentialShareRequestToken = await theater.generateCredentialShareRequestToken(
@@ -98,12 +99,12 @@ describe('[Offer VC flow]', () => {
     )
 
     expect(shareVerification.isValid).to.be.true
+    expect(shareVerification.suppliedCredentials).to.deep.eq(suppliedCredentials)
 
     // [Verifier] Request VP from Holder
     const presentationChallenge = await theater.generatePresentationChallenge(credentialRequirements)
 
     // [Holder] Create VP for the Issuer
-    // TODO what is domain?
     const presentation = await student.createPresentationFromChallenge(
       presentationChallenge,
       credentials,
@@ -112,7 +113,11 @@ describe('[Offer VC flow]', () => {
 
     // [Verifier] Verify the VP
     const presentationVerification = await theater.verifyPresentation(presentation)
+    const { verifiableCredential } = presentationVerification.suppliedPresentation as {
+      verifiableCredential: SignedCredential[]
+    }
 
     expect(presentationVerification.isValid).to.be.true
+    expect(verifiableCredential).to.deep.eq(suppliedCredentials)
   })
 })
