@@ -1,7 +1,7 @@
 import { expect } from 'chai'
 import { CredentialRequirement, OfferedCredential, SignedCredential } from '../../src/dto/shared.dto'
 import { CommonNetworkMember } from '../../src/CommonNetworkMember'
-import { getVCEducationPersonV1Context, VCSEducationPersonV1 } from '@affinidi/vc-data'
+import { getVCEducationPersonV1Context, VCSEducationPersonV1, CredentialV1 } from '@affinidi/vc-data'
 import { getOptionsForEnvironment } from '../helpers'
 import cryptoRandomString from 'crypto-random-string'
 
@@ -69,20 +69,21 @@ describe('[Offer VC flow]', () => {
       requesterDid: student.did,
     })
 
+    const credentials = [signedCredential]
+
     // [Verifier] Request VC from Holder
     const theater: CommonNetworkMember = await CommonNetworkMember.signUp(theaterUsername, theaterPassword, options)
 
-    const credentialRequirements: CredentialRequirement[] = [{ type: ['EducationPersonV1'] }]
+    const credentialRequirements: CredentialRequirement[] = [{ type: ['VerifiableCredential', 'EducationPersonV1'] }]
     const credentialShareRequestToken = await theater.generateCredentialShareRequestToken(
       credentialRequirements,
       undefined,
       options,
     )
 
-    // 3 [Holder] Give VP to Verifier
-    // TODO: generate a VP
+    // [Holder] Give VC to Verifier
     const suppliedCredentials: SignedCredential[] = student.getShareCredential(credentialShareRequestToken, {
-      credentials: [signedCredential],
+      credentials,
     })
 
     const credentialShareResponseToken = await student.createCredentialShareResponseToken(
@@ -90,13 +91,28 @@ describe('[Offer VC flow]', () => {
       suppliedCredentials,
     )
 
-    // 4 [Verifier] Verify the VP
-    // TODO: generate a VP
+    // [Verifier] Verify the VC
     const shareVerification = await theater.verifyCredentialShareResponseToken(
       credentialShareResponseToken,
       credentialShareRequestToken,
     )
 
     expect(shareVerification.isValid).to.be.true
+
+    // [Verifier] Request VP from Holder
+    const presentationChallenge = await theater.generatePresentationChallenge(credentialRequirements)
+
+    // [Holder] Create VP for the Issuer
+    // TODO what is domain?
+    const presentation = await student.createPresentationFromChallenge(
+      presentationChallenge,
+      credentials,
+      'http://example.com',
+    )
+
+    // [Verifier] Verify the VP
+    const presentationVerification = await theater.verifyPresentation(presentation)
+
+    expect(presentationVerification.isValid).to.be.true
   })
 })
