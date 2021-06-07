@@ -41,6 +41,18 @@ describe('[examples]', () => {
 
     before(async () => {
       // Offer VC flow
+      const offeredCredentials: OfferedCredential[] = [{ type: 'EducationPersonV1' }]
+      const credentialOfferRequestToken = await issuer.generateCredentialOfferRequestToken(offeredCredentials)
+
+      const credentialOfferResponseToken = await holder.createCredentialOfferResponseToken(credentialOfferRequestToken)
+
+      const offerVerification = await issuer.verifyCredentialOfferResponseToken(
+        credentialOfferResponseToken,
+        credentialOfferRequestToken,
+      )
+
+      expect(offerVerification.isValid).to.be.true
+
       const credentialSubject: VCSEducationPersonV1 = {
         data: {
           '@type': ['Person', 'PersonE', 'EducationPerson'],
@@ -65,19 +77,6 @@ describe('[examples]', () => {
         type: ['EducationPersonV1'],
       }
 
-      const offeredCredentials: OfferedCredential[] = [{ type: 'EducationPersonV1' }]
-
-      const credentialOfferRequestToken = await issuer.generateCredentialOfferRequestToken(offeredCredentials)
-
-      const credentialOfferResponseToken = await holder.createCredentialOfferResponseToken(credentialOfferRequestToken)
-
-      const offerVerification = await issuer.verifyCredentialOfferResponseToken(
-        credentialOfferResponseToken,
-        credentialOfferRequestToken,
-      )
-
-      expect(offerVerification.isValid).to.be.true
-
       const signedCredential = await issuer.signCredential(credentialSubject, claimMetadata, {
         credentialOfferResponseToken,
         requesterDid: holder.did,
@@ -87,12 +86,10 @@ describe('[examples]', () => {
     })
 
     it('should implement VC share flow (JWT)', async () => {
-      // Share VC flow (JWT)
       const credentialRequirements: CredentialRequirement[] = [{ type: ['VerifiableCredential', 'EducationPersonV1'] }]
       const credentialShareRequestToken = await verifier.generateCredentialShareRequestToken(credentialRequirements)
 
       const suppliedCredentials = holder.getShareCredential(credentialShareRequestToken, { credentials })
-
       const credentialShareResponseToken = await holder.createCredentialShareResponseToken(
         credentialShareRequestToken,
         suppliedCredentials,
@@ -108,12 +105,10 @@ describe('[examples]', () => {
     })
 
     it('should implement VP share flow (W3C)', async () => {
-      // Share VP flow
       const credentialRequirements: CredentialRequirement[] = [{ type: ['VerifiableCredential', 'EducationPersonV1'] }]
       const presentationChallenge = await verifier.generatePresentationChallenge(credentialRequirements)
 
       const suppliedCredentials = holder.getShareCredential(presentationChallenge, { credentials })
-
       const presentation = await holder.createPresentationFromChallenge(
         presentationChallenge,
         credentials,
