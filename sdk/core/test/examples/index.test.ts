@@ -121,10 +121,9 @@ describe('[examples]', () => {
       ]
       const presentationChallenge = await verifier.generatePresentationChallenge(credentialRequirements)
 
-      const suppliedCredentials = holder.getShareCredential(presentationChallenge, { credentials })
       const presentation = await holder.createPresentationFromChallenge(
         presentationChallenge,
-        suppliedCredentials as VCV1[],
+        credentials,
         'http://verifier.example.com',
       )
 
@@ -134,7 +133,7 @@ describe('[examples]', () => {
       }
 
       expect(presentationVerification.isValid).to.be.true
-      expect(verifiableCredential).to.deep.eq(suppliedCredentials)
+      expect(verifiableCredential).to.deep.eq(credentials)
     })
   })
 })
