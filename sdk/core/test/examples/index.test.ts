@@ -1,9 +1,9 @@
 import '../env'
 
 import { expect } from 'chai'
-import { CredentialRequirement, OfferedCredential, SignedCredential } from '../../src/dto/shared.dto'
+import { ClaimMetadata, CredentialRequirement, OfferedCredential, SignedCredential } from '../../src/dto/shared.dto'
 import { CommonNetworkMember } from '../../src/CommonNetworkMember'
-import { getVCEducationPersonV1Context, VCSEducationPersonV1 } from '@affinidi/vc-data'
+import { getVCEmailPersonV1Context, VCSEmailPersonV1 } from '@affinidi/vc-data'
 import { getOptionsForEnvironment } from '../helpers'
 import { VCV1 } from '@affinidi/vc-common'
 
@@ -36,12 +36,33 @@ describe('[examples]', () => {
     verifier = new CommonNetworkMember(verifierPassword, verifierEncryptedSeed, options)
   })
 
+  it('should implement VC building & signing', async () => {
+    const credentialSubject: VCSEmailPersonV1 = {
+      data: {
+        '@type': ['Person', 'PersonE', 'EmailPerson'],
+        email: 'bobbelcher@gmail.com',
+        name: 'Bob Belcher',
+      },
+    }
+
+    const claimMetadata: ClaimMetadata = {
+      context: getVCEmailPersonV1Context(),
+      type: ['EmailCredentialPersonV1'],
+    }
+
+    const signedCredential = await issuer.signCredential(credentialSubject, claimMetadata, {
+      requesterDid: holder.did,
+    })
+
+    expect(signedCredential).to.exist
+  })
+
   describe('[with offered VC]', () => {
     let credentials: VCV1[]
 
     before(async () => {
       // Offer VC flow
-      const offeredCredentials: OfferedCredential[] = [{ type: 'EducationPersonV1' }]
+      const offeredCredentials: OfferedCredential[] = [{ type: 'EmailCredentialPersonV1' }]
       const credentialOfferRequestToken = await issuer.generateCredentialOfferRequestToken(offeredCredentials)
 
       const credentialOfferResponseToken = await holder.createCredentialOfferResponseToken(credentialOfferRequestToken)
@@ -53,40 +74,30 @@ describe('[examples]', () => {
 
       expect(offerVerification.isValid).to.be.true
 
-      const credentialSubject: VCSEducationPersonV1 = {
+      const credentialSubject: VCSEmailPersonV1 = {
         data: {
-          '@type': ['Person', 'PersonE', 'EducationPerson'],
+          '@type': ['Person', 'PersonE', 'EmailPerson'],
+          email: 'bobbelcher@gmail.com',
           name: 'Bob Belcher',
-          hasCredential: {
-            '@type': 'EducationalOcupationalCredential',
-            credentialCategory: 'degree',
-            educationalLevel: 'Bachelor of Science',
-            recognizedBy: {
-              '@type': ['Organization', 'OrganizationE'],
-              name: 'University of New York',
-            },
-            dateCreated: '2020-12-07',
-            url: 'https://www.university.edu/credential/credentialId',
-          },
         },
       }
 
-      const claimMetadata = {
-        context: [getVCEducationPersonV1Context()],
-        name: 'Education',
-        type: ['EducationPersonV1'],
+      const claimMetadata: ClaimMetadata = {
+        context: getVCEmailPersonV1Context(),
+        type: ['EmailCredentialPersonV1'],
       }
 
       const signedCredential = await issuer.signCredential(credentialSubject, claimMetadata, {
         credentialOfferResponseToken,
-        requesterDid: holder.did,
       })
 
       credentials = [signedCredential]
     })
 
     it('should implement VC share flow (JWT)', async () => {
-      const credentialRequirements: CredentialRequirement[] = [{ type: ['VerifiableCredential', 'EducationPersonV1'] }]
+      const credentialRequirements: CredentialRequirement[] = [
+        { type: ['VerifiableCredential', 'EmailCredentialPersonV1'] },
+      ]
       const credentialShareRequestToken = await verifier.generateCredentialShareRequestToken(credentialRequirements)
 
       const suppliedCredentials = holder.getShareCredential(credentialShareRequestToken, { credentials })
@@ -105,13 +116,15 @@ describe('[examples]', () => {
     })
 
     it('should implement VP share flow (W3C)', async () => {
-      const credentialRequirements: CredentialRequirement[] = [{ type: ['VerifiableCredential', 'EducationPersonV1'] }]
+      const credentialRequirements: CredentialRequirement[] = [
+        { type: ['VerifiableCredential', 'EmailCredentialPersonV1'] },
+      ]
       const presentationChallenge = await verifier.generatePresentationChallenge(credentialRequirements)
 
       const suppliedCredentials = holder.getShareCredential(presentationChallenge, { credentials })
       const presentation = await holder.createPresentationFromChallenge(
         presentationChallenge,
-        credentials,
+        suppliedCredentials as VCV1[],
         'http://verifier.example.com',
       )
 
