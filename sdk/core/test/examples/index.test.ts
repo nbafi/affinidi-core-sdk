@@ -91,9 +91,7 @@ describe('[examples]', () => {
       const credentialRequirements: CredentialRequirement[] = [{ type: ['VerifiableCredential', 'EducationPersonV1'] }]
       const credentialShareRequestToken = await verifier.generateCredentialShareRequestToken(credentialRequirements)
 
-      const suppliedCredentials = holder.getShareCredential(credentialShareRequestToken, {
-        credentials,
-      })
+      const suppliedCredentials = holder.getShareCredential(credentialShareRequestToken, { credentials })
 
       const credentialShareResponseToken = await holder.createCredentialShareResponseToken(
         credentialShareRequestToken,
@@ -114,9 +112,7 @@ describe('[examples]', () => {
       const credentialRequirements: CredentialRequirement[] = [{ type: ['VerifiableCredential', 'EducationPersonV1'] }]
       const presentationChallenge = await verifier.generatePresentationChallenge(credentialRequirements)
 
-      const suppliedCredentials = holder.getShareCredential(presentationChallenge, {
-        credentials,
-      })
+      const suppliedCredentials = holder.getShareCredential(presentationChallenge, { credentials })
 
       const presentation = await holder.createPresentationFromChallenge(
         presentationChallenge,
